@@ -1,12 +1,19 @@
 from PIL import Image
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+
+def black_and_white_image_copy(input_image_path,
+                                     output_image_path):
+    color_image = Image.open(input_image_path)
+    bw = color_image.convert('L')
+    bw.save(output_image_path)
 
 
-# Press the green button in the gutter to run the script.
+def rotated_mage_copy(input_image_path, output_image_path, angle):
+    image = Image.open(input_image_path)
+    image = image.rotate(angle, expand=True)
+    image.save(output_image_path)
+
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    black_and_white_image_copy('test', 'test')
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
