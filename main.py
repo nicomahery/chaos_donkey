@@ -1,13 +1,13 @@
 import os
 from random import *
-from PIL import Image
-from PIL import ImageFilter
-from PIL import ImageEnhance
+from PIL import Image, ImageFilter, ImageDraw2, ImageFont
 
 MAX_RANDOM_WIDTH = 800
 MAX_RANDOM_HEIGHT = 800
 MIN_RANDOM_WIDTH = 350
 MIN_RANDOM_HEIGHT = 350
+FONT_ARRAY = ['fonts/GreatVibes-Regular.ttf', 'fonts/Trueno-75PE.otf', 'fonts/WarsawGothic-BnBV.otf',
+              'fonts/NanotechLlc-ed2B.otf', 'fonts/arial.ttf', 'fonts/calibri.ttf', ]
 transposition_dict = {Image.ROTATE_90: '90_', Image.ROTATE_180: '180_', Image.ROTATE_270: '270_',
                       Image.FLIP_LEFT_RIGHT: 'flip_ltr_', Image.FLIP_TOP_BOTTOM: 'flip_ttb_'}
 filter_dict = {ImageFilter.BLUR: 'blur_', ImageFilter.DETAIL: 'detail_', ImageFilter.FIND_EDGES: 'find_edges_',
@@ -60,11 +60,13 @@ def apply_chaotic_transformation_to_image(input_image_path, output_directory_pat
         transposed_image_path = os.path.join(output_directory_path, transposed_filename)
         transpose_image(input_image_path, transposed_image_path, transposition)
         created_image_path_list.append(transposed_image_path)
+    return created_image_path_list
 
 
 def apply_chaotic_filter_to_image(input_image_path, output_directory_path):
     for filter_applied in filter_dict.keys():
-        filtered_image_path = os.path.join(output_directory_path, filter_dict[filter_applied] + os.path.basename(input_image_path))
+        filtered_image_path = os.path.join(output_directory_path, filter_dict[filter_applied]
+                                           + os.path.basename(input_image_path))
         apply_filter_image(input_image_path, filtered_image_path, filter_applied)
 
 
@@ -77,6 +79,15 @@ def resize_image_at_random_dimensions(input_image_path, output_directory_path):
     return resized_image_path
 
 
+def watermark_image(input_image_path, output_image_path, watermark_position, watermark_text, watermark_font,
+                    watermark_size): # position is example (x,y)
+    image = Image.open(input_image_path)
+    width, height = image.size
+    draw = ImageDraw2.Draw(image)
+    font = ImageFont.truetype(watermark_font, watermark_size)
+    draw.text(watermark_position, watermark_text, font=font)
+    image.save(output_image_path)
+
+
 if __name__ == '__main__':
     convert_black_and_white_image('test', 'test')
-
