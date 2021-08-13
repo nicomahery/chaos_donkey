@@ -1,25 +1,37 @@
 import os
 from random import *
-from PIL import Image, ImageFilter, ImageDraw2, ImageFont
+from PIL import Image, ImageFilter, ImageDraw, ImageFont
 
+IMAGE_INPUT_DIRECTORY = 'IMAGE_INPUT_DIRECTORY'
+IMAGE_OUTPUT_DIRECTORY = 'IMAGE_OUTPUT_DIRECTORY'
+PNG_EXTENSION_ARRAY = ['.png', '.PNG']
 MAX_RANDOM_WIDTH = 800
 MAX_RANDOM_HEIGHT = 800
 MIN_RANDOM_WIDTH = 350
 MIN_RANDOM_HEIGHT = 350
+WATERMARK_MARGIN = 10
+MIN_RANDOM_FONT_SIZE = 30
+MAX_RANDOM_FONT_SIZE = 200
+MIN_BLUR_RADIUS = 1
+MAX_BLUR_RADIUS = 7
 FONT_ARRAY = ['fonts/GreatVibes-Regular.ttf', 'fonts/Trueno-75PE.otf', 'fonts/WarsawGothic-BnBV.otf',
               'fonts/NanotechLlc-ed2B.otf', 'fonts/arial.ttf', 'fonts/calibri.ttf', ]
-transposition_dict = {Image.ROTATE_90: '90_', Image.ROTATE_180: '180_', Image.ROTATE_270: '270_',
+TRANSPOSITION_DICT = {Image.ROTATE_90: '90_', Image.ROTATE_180: '180_', Image.ROTATE_270: '270_',
                       Image.FLIP_LEFT_RIGHT: 'flip_ltr_', Image.FLIP_TOP_BOTTOM: 'flip_ttb_'}
-filter_dict = {ImageFilter.BLUR: 'blur_', ImageFilter.DETAIL: 'detail_', ImageFilter.FIND_EDGES: 'find_edges_',
+FILTER_DICT = {ImageFilter.BLUR: 'blur_', ImageFilter.DETAIL: 'detail_', ImageFilter.FIND_EDGES: 'find_edges_',
                ImageFilter.CONTOUR: 'contour_', ImageFilter.EDGE_ENHANCE: 'edge_enhance_',
                ImageFilter.EDGE_ENHANCE_MORE: 'edge_enhance_more_', ImageFilter.SHARPEN: 'sharpen_',
                ImageFilter.SMOOTH_MORE: 'smooth_more'}
+WATERMARK_TEXT_ARRAY = ['Test Watermark', 'TEST WATERMARK', 'WATERMARK', 'Watermark', 'GIFFY', 'STOCK IMAGE',
+                       'Shutterstock', 'Copyright']
 
 
-def convert_black_and_white_image(input_image_path, output_image_path):
+def convert_black_and_white_image(input_image_path, output_directory_path):
     color_image = Image.open(input_image_path)
     bw = color_image.convert('L')
-    bw.save(output_image_path)
+    output_path_location = os.path.join(output_directory_path, os.path.basename(input_image_path))
+    bw.save(output_path_location)
+    return output_path_location
 
 
 def resize_image(input_image_path, output_image_path, width, height):
@@ -40,10 +52,10 @@ def generate_rotated_image(input_image_path, output_image_path, angle):
     image.save(output_image_path)
 
 
-def generate_box_blur_image(input_image_path, output_image_path, radius):
+def generate_box_blur_image(input_image_path, output_directory_path):
     image = Image.open(input_image_path)
-    image = image.filter(ImageFilter.BoxBlur(radius))
-    image.save(output_image_path)
+    image = image.filter(ImageFilter.BoxBlur(randint(MIN_BLUR_RADIUS, MAX_BLUR_RADIUS)))
+    image.save(os.path.join(output_directory_path, os.path.basename(input_image_path)))
 
 
 def apply_filter_image(input_image_path, output_image_path, filter_to_apply):
@@ -53,10 +65,9 @@ def apply_filter_image(input_image_path, output_image_path, filter_to_apply):
 
 
 def apply_chaotic_transformation_to_image(input_image_path, output_directory_path):
-    filename = os.path.basename(input_image_path)
     created_image_path_list = []
-    for transposition in transposition_dict.keys():
-        transposed_filename = transposition_dict[transposition] + filename
+    for transposition in TRANSPOSITION_DICT.keys():
+        transposed_filename = TRANSPOSITION_DICT[transposition] + os.path.basename(input_image_path)
         transposed_image_path = os.path.join(output_directory_path, transposed_filename)
         transpose_image(input_image_path, transposed_image_path, transposition)
         created_image_path_list.append(transposed_image_path)
@@ -64,8 +75,8 @@ def apply_chaotic_transformation_to_image(input_image_path, output_directory_pat
 
 
 def apply_chaotic_filter_to_image(input_image_path, output_directory_path):
-    for filter_applied in filter_dict.keys():
-        filtered_image_path = os.path.join(output_directory_path, filter_dict[filter_applied]
+    for filter_applied in FILTER_DICT.keys():
+        filtered_image_path = os.path.join(output_directory_path, FILTER_DICT[filter_applied]
                                            + os.path.basename(input_image_path))
         apply_filter_image(input_image_path, filtered_image_path, filter_applied)
 
@@ -75,19 +86,67 @@ def resize_image_at_random_dimensions(input_image_path, output_directory_path):
     random_height = randint(MIN_RANDOM_HEIGHT, MAX_RANDOM_HEIGHT)
     resized_image_path = os.path.join(output_directory_path, str(random_width) + '_' + str(random_height) + '_'
                                       + os.path.basename(input_image_path))
-    resize_image(input_image_path, resized_image_path, random_width,  random_height)
+    resize_image(input_image_path, resized_image_path, random_width, random_height)
     return resized_image_path
 
 
-def watermark_image(input_image_path, output_image_path, watermark_position, watermark_text, watermark_font,
-                    watermark_size): # position is example (x,y)
-    image = Image.open(input_image_path)
+def convert_image_to_png(input_image_path):
+    png_filename = os.path.splitext(input_image_path)[0] + '.png'
+    Image.open(input_image_path).convert('RGB')\
+        .save(os.path.join(os.path.dirname(os.path.realpath(input_image_path)), png_filename))
+    return png_filename
+
+
+def watermark_image_using_text(input_image_path, output_directory_path):  # position is example (x,y)
+    watermark_text = WATERMARK_TEXT_ARRAY[randint(0, len(WATERMARK_TEXT_ARRAY)-1)]
+    image = Image.open(input_image_path).convert("RGBA")
     width, height = image.size
-    draw = ImageDraw2.Draw(image)
-    font = ImageFont.truetype(watermark_font, watermark_size)
-    draw.text(watermark_position, watermark_text, font=font)
-    image.save(output_image_path)
+    watermark_overlay = Image.new("RGBA", (width, height), (255, 255, 255, 0))
+    watermark_overlay_draw = ImageDraw.Draw(watermark_overlay)
+    font = ImageFont.truetype(FONT_ARRAY[randint(0, len(FONT_ARRAY)-1)],
+                              randint(MIN_RANDOM_FONT_SIZE, MAX_RANDOM_FONT_SIZE))
+    text_width, text_height = watermark_overlay_draw.textsize(watermark_text, font)
+    watermark_position = (randint(WATERMARK_MARGIN, 0 if (width - text_width - WATERMARK_MARGIN) < 0 else (
+                width - text_width - WATERMARK_MARGIN)),
+                          randint(WATERMARK_MARGIN, 0 if (height - text_height - WATERMARK_MARGIN) < 0 else (
+                                      height - text_height - WATERMARK_MARGIN)))
+    watermark_overlay_draw.text(watermark_position, watermark_text, font=font, fill=(255,255,255,randint(100, 255)))
+    output_image = Image.alpha_composite(image, watermark_overlay)
+    output_image.save(os.path.join(output_directory_path, 'watermarked_' + os.path.basename(input_image_path)))
+    return os.path.join(output_directory_path, 'watermarked_' + os.path.basename(input_image_path))
 
 
 if __name__ == '__main__':
-    convert_black_and_white_image('test', 'test')
+    image_input_directory = os.environ[IMAGE_INPUT_DIRECTORY]
+    image_output_directory = os.environ[IMAGE_OUTPUT_DIRECTORY]
+    if image_input_directory is not None and image_output_directory is not None:
+        for directory in os.walk(image_input_directory):
+            dirname = os.path.dirname(directory[0])
+            if not os.listdir(image_output_directory).__contains__(dirname):
+                os.mkdir(os.path.join(image_output_directory, dirname))
+            for filename in directory[2]:
+                image_filename = filename
+                if not str.__contains__(image_filename, PNG_EXTENSION_ARRAY[0]) \
+                        and not str.__contains__(image_filename, PNG_EXTENSION_ARRAY[1]):
+                    image_filename = convert_image_to_png(os.path.join(directory[0], image_filename))
+
+                image_location = os.path.join(directory[0], image_filename)
+                Image.open(os.path.join(directory[0], image_filename)).save(image_location)
+                watermarked_image_location = watermark_image_using_text(image_location, directory[0])
+                watermarked_watermarked_image_location = \
+                    watermark_image_using_text(watermarked_image_location, directory[0])
+                bw_image_location = convert_black_and_white_image(image_location, directory[0])
+                bw_watermarked_image_location = convert_black_and_white_image(watermarked_image_location, directory[0])
+                bw_watermarked_watermarked_image_location = \
+                    convert_black_and_white_image(watermarked_watermarked_image_location, directory[0])
+                image_array = [image_location, watermarked_image_location, watermarked_watermarked_image_location,
+                               bw_watermarked_image_location, bw_watermarked_watermarked_image_location]
+
+                for image_to_change in image_array:
+                    resized_image = resize_image_at_random_dimensions(image_to_change, directory[0])
+                    apply_chaotic_transformation_to_image(image_to_change, directory[0])
+                    apply_chaotic_transformation_to_image(resized_image, directory[0])
+                    apply_chaotic_filter_to_image(image_to_change, directory[0])
+                    apply_chaotic_filter_to_image(resized_image, directory[0])
+                    generate_box_blur_image(image_to_change, directory[0])
+                    generate_box_blur_image(resized_image, directory[0])
