@@ -4,6 +4,7 @@ from PIL import Image, ImageFilter, ImageDraw, ImageFont
 
 IMAGE_INPUT_DIRECTORY = 'IMAGE_INPUT_DIRECTORY'
 IMAGE_OUTPUT_DIRECTORY = 'IMAGE_OUTPUT_DIRECTORY'
+POST_REMOVE_INPUT_FILE = 'POST_REMOVE_INPUT_FILE'
 PNG_EXTENSION_ARRAY = ['.png', '.PNG']
 MAX_RANDOM_WIDTH = 800
 MAX_RANDOM_HEIGHT = 800
@@ -11,7 +12,7 @@ MIN_RANDOM_WIDTH = 350
 MIN_RANDOM_HEIGHT = 350
 WATERMARK_MARGIN = 10
 MIN_RANDOM_FONT_SIZE = 30
-MAX_RANDOM_FONT_SIZE = 200
+MAX_RANDOM_FONT_SIZE = 250
 MIN_BLUR_RADIUS = 1
 MAX_BLUR_RADIUS = 7
 FONT_ARRAY = ['fonts/GreatVibes-Regular.ttf', 'fonts/Trueno-75PE.otf', 'fonts/WarsawGothic-BnBV.otf',
@@ -23,7 +24,7 @@ FILTER_DICT = {ImageFilter.BLUR: 'blur_', ImageFilter.DETAIL: 'detail_', ImageFi
                ImageFilter.EDGE_ENHANCE_MORE: 'edge_enhance_more_', ImageFilter.SHARPEN: 'sharpen_',
                ImageFilter.SMOOTH_MORE: 'smooth_more'}
 WATERMARK_TEXT_ARRAY = ['Test Watermark', 'TEST WATERMARK', 'WATERMARK', 'Watermark', 'GIFFY', 'STOCK IMAGE',
-                       'Shutterstock', 'Copyright']
+                        'Shutterstock', 'Copyright']
 
 
 def convert_black_and_white_image(input_image_path, output_directory_path):
@@ -92,25 +93,29 @@ def resize_image_at_random_dimensions(input_image_path, output_directory_path):
 
 def convert_image_to_png(input_image_path):
     png_filename = os.path.splitext(input_image_path)[0] + '.png'
-    Image.open(input_image_path).convert('RGB')\
+    Image.open(input_image_path).convert('RGB') \
         .save(os.path.join(os.path.dirname(os.path.realpath(input_image_path)), png_filename))
+    os.remove(input_image_path)
     return png_filename
 
 
 def watermark_image_using_text(input_image_path, output_directory_path):  # position is example (x,y)
-    watermark_text = WATERMARK_TEXT_ARRAY[randint(0, len(WATERMARK_TEXT_ARRAY)-1)]
+    watermark_text = WATERMARK_TEXT_ARRAY[randint(0, len(WATERMARK_TEXT_ARRAY) - 1)]
     image = Image.open(input_image_path).convert("RGBA")
     width, height = image.size
     watermark_overlay = Image.new("RGBA", (width, height), (255, 255, 255, 0))
     watermark_overlay_draw = ImageDraw.Draw(watermark_overlay)
-    font = ImageFont.truetype(FONT_ARRAY[randint(0, len(FONT_ARRAY)-1)],
+    font = ImageFont.truetype(FONT_ARRAY[randint(0, len(FONT_ARRAY) - 1)],
                               randint(MIN_RANDOM_FONT_SIZE, MAX_RANDOM_FONT_SIZE))
     text_width, text_height = watermark_overlay_draw.textsize(watermark_text, font)
-    watermark_position = (randint(WATERMARK_MARGIN, 0 if (width - text_width - WATERMARK_MARGIN) < 0 else (
-                width - text_width - WATERMARK_MARGIN)),
-                          randint(WATERMARK_MARGIN, 0 if (height - text_height - WATERMARK_MARGIN) < 0 else (
-                                      height - text_height - WATERMARK_MARGIN)))
-    watermark_overlay_draw.text(watermark_position, watermark_text, font=font, fill=(255,255,255,randint(100, 255)))
+    watermark_position = (
+        randint(WATERMARK_MARGIN,
+                WATERMARK_MARGIN if (width - text_width - WATERMARK_MARGIN) < WATERMARK_MARGIN else (
+                        width - text_width - WATERMARK_MARGIN)),
+        randint(WATERMARK_MARGIN,
+                WATERMARK_MARGIN if (height - text_height - WATERMARK_MARGIN) < WATERMARK_MARGIN else (
+                            height - text_height - WATERMARK_MARGIN)))
+    watermark_overlay_draw.text(watermark_position, watermark_text, font=font, fill=(255, 255, 255, randint(100, 255)))
     output_image = Image.alpha_composite(image, watermark_overlay)
     output_image.save(os.path.join(output_directory_path, 'watermarked_' + os.path.basename(input_image_path)))
     return os.path.join(output_directory_path, 'watermarked_' + os.path.basename(input_image_path))
@@ -118,35 +123,60 @@ def watermark_image_using_text(input_image_path, output_directory_path):  # posi
 
 if __name__ == '__main__':
     image_input_directory = os.environ[IMAGE_INPUT_DIRECTORY]
+    print(f'image_input_directory= {image_input_directory}')
     image_output_directory = os.environ[IMAGE_OUTPUT_DIRECTORY]
+    print(f'image_output_directory= {image_output_directory}')
+    try:
+        if os.environ[POST_REMOVE_INPUT_FILE] == 'TRUE':
+            post_remove_input_file = True
+        else:
+            post_remove_input_file = False
+    except KeyError:
+        post_remove_input_file = False
+
     if image_input_directory is not None and image_output_directory is not None:
         for directory in os.walk(image_input_directory):
-            dirname = os.path.dirname(directory[0])
-            if not os.listdir(image_output_directory).__contains__(dirname):
-                os.mkdir(os.path.join(image_output_directory, dirname))
-            for filename in directory[2]:
-                image_filename = filename
-                if not str.__contains__(image_filename, PNG_EXTENSION_ARRAY[0]) \
-                        and not str.__contains__(image_filename, PNG_EXTENSION_ARRAY[1]):
-                    image_filename = convert_image_to_png(os.path.join(directory[0], image_filename))
+            if directory[0] is not image_input_directory:
+                dirname = os.path.basename(directory[0])
+                destination_path = os.path.join(image_output_directory, dirname)
+                print(f'dirname= {dirname}')
+                print(f'destination_path= {destination_path}')
+                if not os.listdir(image_output_directory).__contains__(dirname):
+                    os.mkdir(destination_path)
+                for filename in directory[2]:
+                    image_filename = filename
+                    if not str.__contains__(image_filename, PNG_EXTENSION_ARRAY[0]) \
+                            and not str.__contains__(image_filename, PNG_EXTENSION_ARRAY[1]):
+                        image_filename = convert_image_to_png(os.path.join(directory[0], image_filename))
 
-                image_location = os.path.join(directory[0], image_filename)
-                Image.open(os.path.join(directory[0], image_filename)).save(image_location)
-                watermarked_image_location = watermark_image_using_text(image_location, directory[0])
-                watermarked_watermarked_image_location = \
-                    watermark_image_using_text(watermarked_image_location, directory[0])
-                bw_image_location = convert_black_and_white_image(image_location, directory[0])
-                bw_watermarked_image_location = convert_black_and_white_image(watermarked_image_location, directory[0])
-                bw_watermarked_watermarked_image_location = \
-                    convert_black_and_white_image(watermarked_watermarked_image_location, directory[0])
-                image_array = [image_location, watermarked_image_location, watermarked_watermarked_image_location,
-                               bw_watermarked_image_location, bw_watermarked_watermarked_image_location]
+                    image_location = os.path.join(directory[0], image_filename)
+                    Image.open(os.path.join(directory[0], image_filename))\
+                        .save(os.path.join(destination_path, image_filename))
+                    watermarked_image_location = watermark_image_using_text(image_location, destination_path)
+                    watermarked_watermarked_image_location = \
+                        watermark_image_using_text(watermarked_image_location, destination_path)
+                    bw_image_location = convert_black_and_white_image(image_location, destination_path)
+                    bw_watermarked_image_location = \
+                        convert_black_and_white_image(watermarked_image_location, destination_path)
+                    bw_watermarked_watermarked_image_location = \
+                        convert_black_and_white_image(watermarked_watermarked_image_location, destination_path)
+                    image_array = [image_location, watermarked_image_location, watermarked_watermarked_image_location,
+                                   bw_watermarked_image_location, bw_watermarked_watermarked_image_location]
+                    print(f'image_array= {image_array}')
 
-                for image_to_change in image_array:
-                    resized_image = resize_image_at_random_dimensions(image_to_change, directory[0])
-                    apply_chaotic_transformation_to_image(image_to_change, directory[0])
-                    apply_chaotic_transformation_to_image(resized_image, directory[0])
-                    apply_chaotic_filter_to_image(image_to_change, directory[0])
-                    apply_chaotic_filter_to_image(resized_image, directory[0])
-                    generate_box_blur_image(image_to_change, directory[0])
-                    generate_box_blur_image(resized_image, directory[0])
+                    for image_to_change in image_array:
+                        resized_image = resize_image_at_random_dimensions(image_to_change, destination_path)
+                        apply_chaotic_transformation_to_image(image_to_change, destination_path)
+                        apply_chaotic_transformation_to_image(resized_image, destination_path)
+                        apply_chaotic_filter_to_image(image_to_change, destination_path)
+                        apply_chaotic_filter_to_image(resized_image, destination_path)
+                        generate_box_blur_image(image_to_change, destination_path)
+                        generate_box_blur_image(resized_image, destination_path)
+
+                    if post_remove_input_file:
+                        os.remove(image_location)
+
+                    print(f'{os.path.join(dirname, filename)} chaos copies generated')
+
+                if post_remove_input_file:
+                    os.rmdir(directory[0])
