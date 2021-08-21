@@ -123,9 +123,7 @@ def watermark_image_using_text(input_image_path, output_directory_path):  # posi
 
 if __name__ == '__main__':
     image_input_directory = os.environ[IMAGE_INPUT_DIRECTORY]
-    print(f'image_input_directory= {image_input_directory}')
     image_output_directory = os.environ[IMAGE_OUTPUT_DIRECTORY]
-    print(f'image_output_directory= {image_output_directory}')
     try:
         if os.environ[POST_REMOVE_INPUT_FILE] == 'TRUE':
             post_remove_input_file = True
@@ -139,8 +137,7 @@ if __name__ == '__main__':
             if directory[0] is not image_input_directory:
                 dirname = os.path.basename(directory[0])
                 destination_path = os.path.join(image_output_directory, dirname)
-                print(f'dirname= {dirname}')
-                print(f'destination_path= {destination_path}')
+                print(f'Starting conversion of {dirname} directory to {destination_path}')
                 if not os.listdir(image_output_directory).__contains__(dirname):
                     os.mkdir(destination_path)
                 for filename in directory[2]:
@@ -162,7 +159,6 @@ if __name__ == '__main__':
                         convert_black_and_white_image(watermarked_watermarked_image_location, destination_path)
                     image_array = [image_location, watermarked_image_location, watermarked_watermarked_image_location,
                                    bw_watermarked_image_location, bw_watermarked_watermarked_image_location]
-                    print(f'image_array= {image_array}')
 
                     for image_to_change in image_array:
                         resized_image = resize_image_at_random_dimensions(image_to_change, destination_path)
@@ -180,3 +176,12 @@ if __name__ == '__main__':
 
                 if post_remove_input_file:
                     os.rmdir(directory[0])
+
+                print(f'Conversion of {dirname} directory to {destination_path} complete')
+
+    else:
+        print('Unable to start the chaos donkey due to:')
+        if image_input_directory is None:
+            print('    Error IMAGE_INPUT_DIRECTORY env is not defined')
+        if image_output_directory is None:
+            print('    Error IMAGE_OUTPUT_DIRECTORY env is not defined')
